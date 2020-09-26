@@ -1,5 +1,5 @@
 # HpcTelematica
-Proyecto Hpc Telematica EAFIT 2020 1
+Proyecto Hpc Telematica EAFIT 2020 2
 
 ### RayTracing With HPC
 
