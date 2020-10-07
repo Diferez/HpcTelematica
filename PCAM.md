@@ -1,4 +1,5 @@
-
+### Info
+*Se usó para graficar Graphviz para Markdown, pero se adjuntó imagenes para el que no tenga la herramienta*
 
 ## Partición_Funcional
 ```
