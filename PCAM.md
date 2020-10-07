@@ -26,7 +26,7 @@ public void generateImage() {
         </T3>
     }
 ```
-**<T1>**
+### **< T1>**
 ```
 public static Colour intersectRay(Ray ray) {
         double minT = Double.MAX_VALUE;
