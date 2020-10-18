@@ -6,6 +6,9 @@
 #include <vector>
 #include <algorithm>
 #include "geometry.h"
+#include <omp.h>
+#include <mpi.h>
+#include <cstdio>
 
 struct Light {
     Light(const Vec3f &p, const float i) : position(p), intensity(i) {}
@@ -113,14 +116,24 @@ Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &s
     return material.diffuse_color * diffuse_light_intensity * material.albedo[0] + Vec3f(1., 1., 1.)*specular_light_intensity * material.albedo[1] + reflect_color*material.albedo[2] + refract_color*material.albedo[3];
 }
 
-void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights) {
-    const int   width    = 1024;
-    const int   height   = 768;
+std::vector<Vec3f> render(int width,int height, const std::vector<Sphere> &spheres, const std::vector<Light> &lights, const int rank, const int world_size) {
+    
+
+    int segment = height / world_size;
+    int start, end;
+    if(rank==world_size-1){
+        start = segment*rank;
+        end   = height-1;
+    }else{
+        start = segment*rank;
+        end   = segment*(rank+1);
+    }
+    
     const float fov      = M_PI/3.;
     std::vector<Vec3f> framebuffer(width*height);
 
-    #pragma omp parallel for
-    for (size_t j = 0; j<height; j++) { // actual rendering loop
+    #pragma omp parallel for    
+    for (size_t j = start; j<end; j++) { // actual rendering loop
         for (size_t i = 0; i<width; i++) {
             float dir_x =  (i + 0.5) -  width/2.;
             float dir_y = -(j + 0.5) + height/2.;    // this flips the image at the same time
@@ -128,22 +141,21 @@ void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights
             framebuffer[i+j*width] = cast_ray(Vec3f(0,0,0), Vec3f(dir_x, dir_y, dir_z).normalize(), spheres, lights);
         }
     }
+    return framebuffer;
 
-    std::ofstream ofs; // save the framebuffer to file
-    ofs.open("./out.ppm",std::ios::binary);
-    ofs << "P6\n" << width << " " << height << "\n255\n";
-    for (size_t i = 0; i < height*width; ++i) {
-        Vec3f &c = framebuffer[i];
-        float max = std::max(c[0], std::max(c[1], c[2]));
-        if (max>1) c = c*(1./max);
-        for (size_t j = 0; j<3; j++) {
-            ofs << (char)(255 * std::max(0.f, std::min(1.f, framebuffer[i][j])));
-        }
-    }
-    ofs.close();
 }
 
-int main() {
+int main(int argc, char** argv) {
+    int ret = MPI_Init(&argc,&argv);
+    if (ret != MPI_SUCCESS) {
+        printf("error: could not initialize MPI\n");
+        MPI_Abort(MPI_COMM_WORLD, ret);
+    }
+    int rank, size, namelen;
+    MPI_Comm_rank (MPI_COMM_WORLD, &rank); // ID of current process
+    MPI_Comm_size (MPI_COMM_WORLD, &size); // Number of processes
+    printf ("Hello World from rank %d \n", rank);
+    //MPI
     Material      ivory(1.0, Vec4f(0.6,  0.3, 0.1, 0.0), Vec3f(0.4, 0.4, 0.3),   50.);
     Material      glass(1.5, Vec4f(0.0,  0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8),  125.);
     Material red_rubber(1.0, Vec4f(0.9,  0.1, 0.0, 0.0), Vec3f(0.3, 0.1, 0.1),   10.);
@@ -160,8 +172,41 @@ int main() {
     lights.push_back(Light(Vec3f( 30, 50, -25), 1.8));
     lights.push_back(Light(Vec3f( 30, 20,  30), 1.7));
 
-    render(spheres, lights);
+    const int   width    = 1920;
+    const int   height   = 1080;
 
+    const double t0 = omp_get_wtime();
+    printf ("%s %d  \n", "Antes del render", rank);
+    std::vector<Vec3f> framebuffer = render(width, height, spheres, lights, rank, size);
+    printf ("%s %d  \n", "Despues del render", rank);
+    const double t1 = omp_get_wtime();
+
+    
+    printf ("%s %d \n", "Despues de crear imagen", rank);
+    const double ts   = t1-t0; // time in seconds
+    const double tms  = ts*1.0e3; // time in milliseconds
+    if (rank == 0) printf("MPI World size = %d processes\n", size);
+    if(rank == 0){
+    printf("Tiempo = %15.3f\n", tms);
+    }
+    if(rank == 0){
+        std::ofstream ofs; // save the framebuffer to file
+        ofs.open("./out.ppm",std::ios::binary);
+        ofs << "P6\n" << width << " " << height << "\n255\n";
+        for (size_t i = 0; i < height*width; ++i) {
+            Vec3f &c = framebuffer[i];
+            float max = std::max(c[0], std::max(c[1], c[2]));
+            if (max>1) c = c*(1./max);
+            for (size_t j = 0; j<3; j++) {
+                ofs << (char)(255 * std::max(0.f, std::min(1.f, framebuffer[i][j])));
+            }
+        }
+
+        ofs.close();
+    }
+    MPI_Finalize();
     return 0;
+    
 }
+
 
