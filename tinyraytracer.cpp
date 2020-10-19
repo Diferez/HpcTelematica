@@ -120,8 +120,9 @@ Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &s
 }
 
 void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights, const int rank, const int world_size) {
+    const double t0 = omp_get_wtime();
     const int   width    = 1920;
-    const int   height   = 1080;
+    const int   height   = 1400;
     MPI_Status stat;
     int segment = height / world_size;
     int start, end;
@@ -135,9 +136,11 @@ void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights
     
     const float fov      = M_PI/3.;
     std::vector<Vec3f> framebuffer(width*height);
+    
 
     #pragma omp parallel for    
     for (size_t j = start; j<end; j++) { // actual rendering loop
+        #pragma omp simd
         for (size_t i = 0; i<width; i++) {
             float dir_x =  (i + 0.5) -  width/2.;
             float dir_y = -(j + 0.5) + height/2.;    // this flips the image at the same time
@@ -148,7 +151,7 @@ void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights
 
 
     float opt[width*segment*3];
-    #pragma omp parallel for 
+    #pragma omp parallel for   
     for (size_t i = start*width; i < end*width; ++i) {
         Vec3f &c = framebuffer[i];
         float max = std::max(c[0], std::max(c[1], c[2]));
@@ -162,16 +165,19 @@ void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights
         
     }
 
+    MPI_Barrier(MPI_COMM_WORLD);
 
-
+    const double t1 = omp_get_wtime();
+    const double ts   = t1-t0; // time in seconds
+    const double tms  = ts*1.0e3; // time in milliseconds
+    //MPI_Barrier(MPI_COMM_WORLD);
+    if (rank == 0) printf("Tiempo Calculo = %15.3f\n", tms);
 
     //const char * img = opt.str().c_str();
 
     
     //std::cout<<"DG"<<"\n";
     if (rank == 0){
-        std::cout<<"Segment "<<segment*width*3<<"\n";
-        std::cout<<"Sizeof "<<sizeof(opt)/sizeof(opt[0])<<"\n";
         std::ofstream ofs; // save the framebuffer to file
         
         ofs.open("Nani.ppm",std::ios::binary); // Cambiar esto por algo tipo "./out[Rank].ppm"
@@ -204,26 +210,37 @@ int main(int argc, char** argv) {
         printf("error: could not initialize MPI\n");
         MPI_Abort(MPI_COMM_WORLD, ret);
     }
+
+    if(argc>1){
+        int x = atoi(argv[1]);
+        omp_set_num_threads(x);
+    }
+    const int nt=omp_get_max_threads();
+    
     int rank, size, namelen;
     MPI_Comm_rank (MPI_COMM_WORLD, &rank); // ID of current process
     MPI_Comm_size (MPI_COMM_WORLD, &size); // Number of processes
     //MPI
+    if (rank == 0)printf("OpenMP with %d threads\n", nt);
     Material      ivory(1.0, Vec4f(0.6,  0.3, 0.1, 0.0), Vec3f(0.4, 0.4, 0.3),   50.);
     Material      glass(1.5, Vec4f(0.0,  0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8),  125.);
     Material red_rubber(1.0, Vec4f(0.9,  0.1, 0.0, 0.0), Vec3f(0.3, 0.1, 0.1),   10.);
     Material     mirror(1.0, Vec4f(0.0, 10.0, 0.8, 0.0), Vec3f(1.0, 1.0, 1.0), 1425.);
+    
 
     std::vector<Sphere> spheres;
     spheres.push_back(Sphere(Vec3f(-3,    0,   -16), 2,      ivory));
     spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -12), 2,      glass));
     spheres.push_back(Sphere(Vec3f( 1.5, -0.5, -18), 3, red_rubber));
+    spheres.push_back(Sphere(Vec3f( 12, -0.5, -18), 3, red_rubber));
     spheres.push_back(Sphere(Vec3f( 7,    5,   -18), 4,     mirror));
+    spheres.push_back(Sphere(Vec3f(-3,    5,   -18), 4,     mirror));
 
     std::vector<Light>  lights;
     lights.push_back(Light(Vec3f(-20, 20,  20), 1.5));
     lights.push_back(Light(Vec3f( 30, 50, -25), 1.8));
     lights.push_back(Light(Vec3f( 30, 20,  30), 1.7));
-
+    lights.push_back(Light(Vec3f( 10, 20,  10), 1.7));
     const double t0 = omp_get_wtime();
     render(spheres, lights, rank, size);
     const double t1 = omp_get_wtime();
@@ -233,7 +250,7 @@ int main(int argc, char** argv) {
     if (rank == 0) printf("MPI World size = %d processes\n", size);
     if(rank == 0){
         
-        printf("Tiempo = %15.3f\n", tms);
+        printf("Tiempo total = %15.3f\n", tms);
     }
     
     
