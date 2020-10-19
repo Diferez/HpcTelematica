@@ -9,7 +9,10 @@
 #include <omp.h>
 #include <mpi.h>
 #include <cstdio>
-
+#include <sstream>
+#include <string>
+#include <stdio.h>
+#include <string.h>
 struct Light {
     Light(const Vec3f &p, const float i) : position(p), intensity(i) {}
     Vec3f position;
@@ -116,8 +119,9 @@ Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &s
     return material.diffuse_color * diffuse_light_intensity * material.albedo[0] + Vec3f(1., 1., 1.)*specular_light_intensity * material.albedo[1] + reflect_color*material.albedo[2] + refract_color*material.albedo[3];
 }
 
-std::vector<Vec3f> render(int width,int height, const std::vector<Sphere> &spheres, const std::vector<Light> &lights, const int rank, const int world_size) {
-    
+void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights, const int rank, const int world_size) {
+    const int   width    = 1920;
+    const int   height   = 1080;
 
     int segment = height / world_size;
     int start, end;
@@ -141,9 +145,25 @@ std::vector<Vec3f> render(int width,int height, const std::vector<Sphere> &spher
             framebuffer[i+j*width] = cast_ray(Vec3f(0,0,0), Vec3f(dir_x, dir_y, dir_z).normalize(), spheres, lights);
         }
     }
-    return framebuffer;
+
+    std::ofstream ofs; // save the framebuffer to file
+    std::stringstream file_name;
+    file_name <<"./out" << rank << ".ppm";
+    ofs.open(file_name.str(),std::ios::binary); // Cambiar esto por algo tipo "./out[Rank].ppm"
+    ofs << "P6\n" << width << " " << end-start << "\n255\n";
+    for (size_t i = start*1920; i < end*1920; ++i) {
+        Vec3f &c = framebuffer[i];
+        float max = std::max(c[0], std::max(c[1], c[2]));
+        if (max>1) c = c*(1./max);
+        for (size_t j = 0; j<3; j++) {
+            ofs << (char)(255 * std::max(0.f, std::min(1.f, framebuffer[i][j])));
+        }
+        
+    }
+    ofs.close();
 
 }
+
 
 int main(int argc, char** argv) {
     int ret = MPI_Init(&argc,&argv);
@@ -172,41 +192,25 @@ int main(int argc, char** argv) {
     lights.push_back(Light(Vec3f( 30, 50, -25), 1.8));
     lights.push_back(Light(Vec3f( 30, 20,  30), 1.7));
 
-    const int   width    = 1920;
-    const int   height   = 1080;
-
     const double t0 = omp_get_wtime();
-    printf ("%s %d  \n", "Antes del render", rank);
-    std::vector<Vec3f> framebuffer = render(width, height, spheres, lights, rank, size);
-    printf ("%s %d  \n", "Despues del render", rank);
+    render(spheres, lights, rank, size);
     const double t1 = omp_get_wtime();
-
-    
-    printf ("%s %d \n", "Despues de crear imagen", rank);
     const double ts   = t1-t0; // time in seconds
     const double tms  = ts*1.0e3; // time in milliseconds
+    //MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0) printf("MPI World size = %d processes\n", size);
     if(rank == 0){
-    printf("Tiempo = %15.3f\n", tms);
+        
+        printf("Tiempo = %15.3f\n", tms);
     }
-    if(rank == 0){
-        std::ofstream ofs; // save the framebuffer to file
-        ofs.open("./out.ppm",std::ios::binary);
-        ofs << "P6\n" << width << " " << height << "\n255\n";
-        for (size_t i = 0; i < height*width; ++i) {
-            Vec3f &c = framebuffer[i];
-            float max = std::max(c[0], std::max(c[1], c[2]));
-            if (max>1) c = c*(1./max);
-            for (size_t j = 0; j<3; j++) {
-                ofs << (char)(255 * std::max(0.f, std::min(1.f, framebuffer[i][j])));
-            }
-        }
-
-        ofs.close();
-    }
-    MPI_Finalize();
-    return 0;
     
+    
+    
+    return 0;
+    MPI_Finalize();
 }
+
+
+
 
 
