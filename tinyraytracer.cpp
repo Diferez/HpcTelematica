@@ -214,7 +214,12 @@ int main(int argc, char** argv) {
     }
     int   width    = 1920;
     int   height   = 1400;
-    if(argc>2){
+    if(argc>3){
+        width = atoi(argv[1]);
+        height = atoi(argv[2]);
+        int x = atoi(argv[3]);
+        omp_set_num_threads(x);
+    }else if(argc>2){
         width = atoi(argv[1]);
         height = atoi(argv[2]);
     }else if(argc>1){
