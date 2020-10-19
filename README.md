@@ -18,9 +18,13 @@ Proyecto Hpc Telematica EAFIT 2020 2
 
 `$ echo 'cd $PBS_O_WORKDIR ; mpirun -machinefile $PBS_NODEFILE ./tinyraytracer [width] [height]' | qsub -l nodes=4:flat -N [nombre]`
 
+`$ echo 'cd $PBS_O_WORKDIR ; mpirun -machinefile $PBS_NODEFILE ./tinyraytracer [width] [height] [numero de hilos]' | qsub -l nodes=4:flat -N [nombre]`
+
 - Ejemplo
 
 `$ echo 'cd $PBS_O_WORKDIR ; mpirun -machinefile $PBS_NODEFILE ./tinyraytracer 50' | qsub -l nodes=4:flat -N test`
 
 `$ echo 'cd $PBS_O_WORKDIR ; mpirun -machinefile $PBS_NODEFILE ./tinyraytracer 1920 1080' | qsub -l nodes=4:flat -N test`
+
+`$ echo 'cd $PBS_O_WORKDIR ; mpirun -machinefile $PBS_NODEFILE ./tinyraytracer 1920 1080 50' | qsub -l nodes=4:flat -N test`
 
