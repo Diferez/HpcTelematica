@@ -119,16 +119,19 @@ Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &s
     return material.diffuse_color * diffuse_light_intensity * material.albedo[0] + Vec3f(1., 1., 1.)*specular_light_intensity * material.albedo[1] + reflect_color*material.albedo[2] + refract_color*material.albedo[3];
 }
 
-void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights, const int rank, const int world_size) {
+void render(int width, int height,const std::vector<Sphere> &spheres, const std::vector<Light> &lights, const int rank, const int world_size) {
+
     const double t0 = omp_get_wtime();
-    const int   width    = 1920;
-    const int   height   = 1400;
+
     MPI_Status stat;
     int segment = height / world_size;
+
     int start, end;
+
     if(rank==world_size-1){
         start = segment*rank;
-        end   = height-1;
+        end   = height;
+        segment = end - start;
     }else{
         start = segment*rank;
         end   = segment*(rank+1);
@@ -149,8 +152,8 @@ void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights
         }
     }
 
-
-    float opt[width*segment*3];
+    int segmentSize =  width*segment*3;
+    float opt[segmentSize];
     #pragma omp parallel for   
     for (size_t i = start*width; i < end*width; ++i) {
         Vec3f &c = framebuffer[i];
@@ -170,29 +173,28 @@ void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights
     const double t1 = omp_get_wtime();
     const double ts   = t1-t0; // time in seconds
     const double tms  = ts*1.0e3; // time in milliseconds
-    //MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0) printf("Tiempo Calculo = %15.3f\n", tms);
 
-    //const char * img = opt.str().c_str();
+
 
     
-    //std::cout<<"DG"<<"\n";
+
     if (rank == 0){
         std::ofstream ofs; // save the framebuffer to file
         
-        ofs.open("Nani.ppm",std::ios::binary); // Cambiar esto por algo tipo "./out[Rank].ppm"
+        ofs.open("Nani.ppm",std::ios::binary); 
         ofs << "P6\n" << width << " " << height<< "\n255\n";
-        for (size_t i = 0; i < segment*width*3; ++i) {
+        for (size_t i = 0; i < segmentSize; ++i) {
             //std::cout<<i<<"\n";
             ofs<<(char)opt[i];
         }
         
         for (size_t j = 1; j < world_size; ++j){
-            float rec_buf[width*segment*3];
-            MPI_Recv (rec_buf, segment*width*3+1, MPI_FLOAT, j, 0, MPI_COMM_WORLD, &stat);
+            float rec_buf[segmentSize];
+            MPI_Recv (rec_buf, segmentSize, MPI_FLOAT, j, 0, MPI_COMM_WORLD, &stat);
 
-            int largo = segment*width*3;
-            for (size_t i = 0; i < largo; ++i) {
+
+            for (size_t i = 0; i < segmentSize; ++i) {
                 //std::cout<<i<<"\n";
                 ofs<<(char)rec_buf[i];
             }
@@ -200,7 +202,7 @@ void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights
         }
         ofs.close();
     }else{
-        MPI_Send(opt,segment*width*3+1,MPI_FLOAT, 0, 0,MPI_COMM_WORLD);
+        MPI_Send(opt,segmentSize,MPI_FLOAT, 0, 0,MPI_COMM_WORLD);
     }
 }
 
@@ -210,8 +212,12 @@ int main(int argc, char** argv) {
         printf("error: could not initialize MPI\n");
         MPI_Abort(MPI_COMM_WORLD, ret);
     }
-
-    if(argc>1){
+    int   width    = 1920;
+    int   height   = 1400;
+    if(argc>2){
+        width = atoi(argv[1]);
+        height = atoi(argv[2]);
+    }else if(argc>1){
         int x = atoi(argv[1]);
         omp_set_num_threads(x);
     }
@@ -242,7 +248,7 @@ int main(int argc, char** argv) {
     lights.push_back(Light(Vec3f( 30, 20,  30), 1.7));
     lights.push_back(Light(Vec3f( 10, 20,  10), 1.7));
     const double t0 = omp_get_wtime();
-    render(spheres, lights, rank, size);
+    render(width, height, spheres, lights, rank, size);
     const double t1 = omp_get_wtime();
     const double ts   = t1-t0; // time in seconds
     const double tms  = ts*1.0e3; // time in milliseconds
