@@ -122,7 +122,7 @@ Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &s
 void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights, const int rank, const int world_size) {
     const int   width    = 1920;
     const int   height   = 1080;
-
+    MPI_Status stat;
     int segment = height / world_size;
     int start, end;
     if(rank==world_size-1){
@@ -146,24 +146,57 @@ void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights
         }
     }
 
-    std::ofstream ofs; // save the framebuffer to file
-    std::stringstream file_name;
-    file_name <<"./out" << rank << ".ppm";
-    ofs.open(file_name.str(),std::ios::binary); // Cambiar esto por algo tipo "./out[Rank].ppm"
-    ofs << "P6\n" << width << " " << end-start << "\n255\n";
-    for (size_t i = start*1920; i < end*1920; ++i) {
+
+    float opt[width*segment*3];
+    #pragma omp parallel for 
+    for (size_t i = start*width; i < end*width; ++i) {
         Vec3f &c = framebuffer[i];
         float max = std::max(c[0], std::max(c[1], c[2]));
         if (max>1) c = c*(1./max);
         for (size_t j = 0; j<3; j++) {
-            ofs << (char)(255 * std::max(0.f, std::min(1.f, framebuffer[i][j])));
+            opt[((i-start*width)*3)+j] = (float)(255 * std::max(0.f, std::min(1.f, framebuffer[i][j])));
+
+            
+
         }
         
     }
-    ofs.close();
 
+
+
+
+    //const char * img = opt.str().c_str();
+
+    
+    //std::cout<<"DG"<<"\n";
+    if (rank == 0){
+        std::cout<<"Segment "<<segment*width*3<<"\n";
+        std::cout<<"Sizeof "<<sizeof(opt)/sizeof(opt[0])<<"\n";
+        std::ofstream ofs; // save the framebuffer to file
+        
+        ofs.open("Nani.ppm",std::ios::binary); // Cambiar esto por algo tipo "./out[Rank].ppm"
+        ofs << "P6\n" << width << " " << height<< "\n255\n";
+        for (size_t i = 0; i < segment*width*3; ++i) {
+            //std::cout<<i<<"\n";
+            ofs<<(char)opt[i];
+        }
+        
+        for (size_t j = 1; j < world_size; ++j){
+            float rec_buf[width*segment*3];
+            MPI_Recv (rec_buf, segment*width*3+1, MPI_FLOAT, j, 0, MPI_COMM_WORLD, &stat);
+
+            int largo = segment*width*3;
+            for (size_t i = 0; i < largo; ++i) {
+                //std::cout<<i<<"\n";
+                ofs<<(char)rec_buf[i];
+            }
+
+        }
+        ofs.close();
+    }else{
+        MPI_Send(opt,segment*width*3+1,MPI_FLOAT, 0, 0,MPI_COMM_WORLD);
+    }
 }
-
 
 int main(int argc, char** argv) {
     int ret = MPI_Init(&argc,&argv);
@@ -174,7 +207,6 @@ int main(int argc, char** argv) {
     int rank, size, namelen;
     MPI_Comm_rank (MPI_COMM_WORLD, &rank); // ID of current process
     MPI_Comm_size (MPI_COMM_WORLD, &size); // Number of processes
-    printf ("Hello World from rank %d \n", rank);
     //MPI
     Material      ivory(1.0, Vec4f(0.6,  0.3, 0.1, 0.0), Vec3f(0.4, 0.4, 0.3),   50.);
     Material      glass(1.5, Vec4f(0.0,  0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8),  125.);
@@ -205,9 +237,9 @@ int main(int argc, char** argv) {
     }
     
     
-    
-    return 0;
     MPI_Finalize();
+    return 0;
+    
 }
 
 
