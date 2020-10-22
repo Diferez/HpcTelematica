@@ -8,7 +8,7 @@ Proyecto Hpc Telematica EAFIT 2020 2
 - Diego Fernando Martinez
 - Juan Jose Parra
 
-## Iformación de implementación
+## Información de implementación
 El código usado fue sacadao de https://github.com/ssloy/tinyraytracer/blob/master/tinyraytracer.cpp del user 'ssloy', mas la implementación y modificación para HPC del mismo es de autoridad de los integrantes antes mencionados en la sección Integrantes.
 
 ## Uso:
@@ -31,3 +31,10 @@ El código usado fue sacadao de https://github.com/ssloy/tinyraytracer/blob/mast
 
 `$ echo 'cd $PBS_O_WORKDIR ; mpirun -machinefile $PBS_NODEFILE ./tinyraytracer 1920 1080 50' | qsub -l nodes=4:flat -N test`
 
+## Videos integrantes
+
+- Sebastian Bustamante Cardona
+
+- Diego Fernando Martinez
+
+- Juan Jose Parra
