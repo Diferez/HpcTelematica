@@ -1,8 +1,7 @@
+
 ### HpcTelematica
-
+# RayTracing With HPC
 Proyecto Hpc Telematica EAFIT 2020 2
-
-**RayTracing With HPC**
 
 ## Integrantes:
 - Sebastian Bustamante Cardona
