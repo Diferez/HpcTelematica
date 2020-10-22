@@ -1,14 +1,14 @@
-# HpcTelematica
+**HpcTelematica**
 Proyecto Hpc Telematica EAFIT 2020 2
 
-### RayTracing With HPC
+**RayTracing With HPC**
 
 ## Integrantes:
 - Sebastian Bustamante Cardona
 - Diego Fernando Martinez
 - Juan Jose Parra
 
-## Información de implementación
+## Información de Implementación:
 El código usado fue sacadao de https://github.com/ssloy/tinyraytracer/blob/master/tinyraytracer.cpp del user 'ssloy', mas la implementación y modificación para HPC del mismo es de autoridad de los integrantes antes mencionados en la sección Integrantes.
 
 ## Uso:
@@ -31,7 +31,7 @@ El código usado fue sacadao de https://github.com/ssloy/tinyraytracer/blob/mast
 
 `$ echo 'cd $PBS_O_WORKDIR ; mpirun -machinefile $PBS_NODEFILE ./tinyraytracer 1920 1080 50' | qsub -l nodes=4:flat -N test`
 
-## Videos integrantes
+## Videos integrantes:
 
 - Sebastian Bustamante Cardona
 
