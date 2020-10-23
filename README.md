@@ -28,7 +28,7 @@ Efectuar la técnica de Ray Tracing con computación de alto rendimiento.
 Obtener una imagen renderizada en alta calidad.
 
 **Logros**
-Se logró reducir el tiempo de cómputo a 400ms con 4 nucleos, 100 hilos y con una resolución de 1080p 
+Se logró reducir el tiempo de cómputo a 400ms con 4 nucleos, 100 hilos y con una resolución de 1080p, con calculos MPI y estrategias con OpenMP.
 ![alt text](https://github.com/Ilianx/HpcTelematica/blob/master/Img/Hpcjpeg.png)
 
 ## Uso:
