@@ -54,8 +54,8 @@ Se logró reducir el tiempo de cómputo a 400ms con 4 nucleos, 100 hilos y con u
 
 ## Videos integrantes:
 
-- [Sebastian Bustamante Cardona](https://youtu.be/oS7-QFTQh0o)
+- [Sebastián Bustamante Cardona](https://youtu.be/oS7-QFTQh0o)
 
-- [Diego Fernando Martinez](https://youtu.be/G5Gc0Juz7SM)
+- [Diego Fernando Martínez](https://youtu.be/G5Gc0Juz7SM)
 
-- [Juan Jose Parra]()
+- [Juan José Parra](https://youtu.be/hQ3Qy3NkBEg)
